@@ -1,0 +1,5 @@
+Usage is extremely simple.
+
+new SOSTrace();
+
+This will redirect all future calls to trace() through to SOS.
