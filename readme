@@ -4,7 +4,7 @@ new SOSTrace();
 
 Optionally, it takes a host and port number for remote connections.
 
-new SOSTrace("192.168.2.12");
+new SOSTrace("192.168.2.12", 8989);
 
 Subsequent calls to trace() will be forwarded to SOSmax, defaulting to the debug log level. An optional second parameter is the log level:
 
