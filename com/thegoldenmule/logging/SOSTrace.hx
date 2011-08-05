@@ -9,17 +9,22 @@ import haxe.Log;
 import haxe.PosInfos;
 
 /**
- * SOS XML socket trace target.
+ * SOS socket server trace target.
  * 
  * @author thegoldenmule
  */
-
 class SOSTrace {
 	
 	private var _socket:XMLSocket;
 	private var _server:String;
 	private var _port:Int;
 	private var _history:Array<Dynamic>;
+	
+	public static inline var DEBUG:String = "debug";
+	public static inline var INFO:String = "info";
+	public static inline var WARN:String = "warn";
+	public static inline var ERROR:String = "error";
+	public static inline var FATAL:String = "fatal";
 	
 	public function new(server:String = "localhost", port:Int = 4444) {
 		_socket = new XMLSocket();
@@ -35,7 +40,9 @@ class SOSTrace {
 		
 		var logObj:Dynamic = {
 			message:Std.string(v),
-			parameters:inf
+			parameters:inf,
+			logLevel:(null != inf.customParams && inf.customParams.length > 0) ? inf.customParams[0] : "debug",
+			tokens:(null != inf.customParams && inf.customParams.length > 1) ? inf.customParams.slice(1) : []
 		};
 		
 		if (_socket.connected) {
@@ -68,12 +75,27 @@ class SOSTrace {
 	}
 	
 	private function send(log:Dynamic):Void {
-		var message:String = log.message;
+		var message:String = substitute(log.message, log.tokens);
 		_socket.send("!SOS"
-			+ "<showMessage key='debug'>"
-			+ log.parameters.fileName + ":" + log.parameters.className + ":" + log.parameters.methodName + ":" + log.parameters.lineNumber + "  "
+			+ "<showMessage key='" + log.logLevel + "'>"
+			+ log.parameters.className + ":" + log.parameters.methodName + ":" + log.parameters.lineNumber + "  "
 			+ message
 			+ "</showMessage>"
 			+ "\n");
+	}
+	
+	private static function substitute(str:String, params:Array<String>):String {
+		if (null == str) {
+			return "";
+		}
+		
+		// Replace all of the parameters in the msg string.
+		var i:Int = 0;
+		for (i in 0...params.length){
+			var regex:EReg = new EReg("\\{" + i + "\\}", "g");
+			str = regex.replace(str, params[i]);
+		}
+		
+		return str;
 	}
 }
