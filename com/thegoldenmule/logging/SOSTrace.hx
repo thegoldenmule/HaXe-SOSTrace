@@ -1,24 +1,37 @@
 package com.thegoldenmule.logging;
 
-import flash.errors.Error;
-import flash.events.Event;
-import flash.events.IOErrorEvent;
-import flash.events.SecurityErrorEvent;
-import flash.net.XMLSocket;
 import haxe.Log;
 import haxe.PosInfos;
+import haxe.Timer;
+
+#if js
+	import js.SWFObject;
+#end
+
+typedef SOSSocket =
+	#if flash9
+		flash.net.XMLSocket
+	#elseif flash
+		flash.XMLSocket
+	#elseif js
+		js.XMLSocket
+	#else
+		Dynamic
+	#end
 
 /**
  * SOS socket server trace target.
  * 
  * @author thegoldenmule
  */
+
 class SOSTrace {
 	
-	private var _socket:XMLSocket;
+	private var _socket:SOSSocket;
 	private var _server:String;
 	private var _port:Int;
 	private var _history:Array<Dynamic>;
+	private var _connected:Bool;
 	
 	public static inline var DEBUG:String = "debug";
 	public static inline var INFO:String = "info";
@@ -27,17 +40,47 @@ class SOSTrace {
 	public static inline var FATAL:String = "fatal";
 	
 	public function new(server:String = "localhost", port:Int = 4444) {
-		_socket = new XMLSocket();
 		_server = server;
 		_port = port;
 		_history = new Array<Dynamic>();
+		_connected = false;
 		
+		// check platform
+		#if js
+			var swfo:SWFObject = new SWFObject("flashsocket.swf", "flashsocket", 1, 1, "9", "#ffffff"); 
+			swfo.addParam("allowScriptAccess", "always"); 
+			swfo.write("flashcontent");
+			Timer.delay(connect, 500);
+		#else
+			connect();
+		#end
+		
+		// set trace
 		Log.trace = sostrace;
 	}
 	
-	private function sostrace(v:Dynamic, ?inf:PosInfos) {
-		if (null == _socket) return;
+	private function connect():Void {
+		_socket = new SOSSocket("flashsocket");
+		_socket.connect(_server, _port);
 		
+		#if js
+			_socket.onConnect = onConnect;
+		#else
+			_connected = true;
+		#end
+	}
+	
+	private function onConnect(b:Bool):Void {
+		_connected = true;
+		_socket.send("!SOS<showMessage key='debug'>SOS Connection established.</showMessage>\n");
+		
+		var obj:Dynamic;
+		for (obj in _history) {
+			send(obj);
+		}
+	}
+	
+	private function sostrace(v:Dynamic, ?inf:PosInfos) {
 		var logObj:Dynamic = {
 			message:Std.string(v),
 			parameters:inf,
@@ -45,33 +88,11 @@ class SOSTrace {
 			tokens:(null != inf.customParams && inf.customParams.length > 1) ? inf.customParams.slice(1) : []
 		};
 		
-		if (_socket.connected) {
+		if (_connected) {
 			send(logObj);
-			return;
-		} else if (!_socket.hasEventListener(Event.CONNECT)) {
-			_socket.addEventListener(IOErrorEvent.IO_ERROR, errorHandler, false, 0, true);
-			_socket.addEventListener(SecurityErrorEvent.SECURITY_ERROR, errorHandler, false, 0, true);
-			_socket.addEventListener(Event.CONNECT, connectHandler, false, 0, true);
-			_socket.connect(_server, _port);
-			
+		} else {
+			_history.push(logObj);
 		}
-		
-		_history.push(logObj);
-	}
-	
-	private function connectHandler(event:Event):Void {
-		// send all items in history
-		var log:Dynamic;
-		for (log in _history) {
-			send(log);
-		}
-		
-		_history = [];
-	}
-	
-	private function errorHandler(event:Event):Void {
-		_socket = null;
-		_history = [];
 	}
 	
 	private function send(log:Dynamic):Void {
