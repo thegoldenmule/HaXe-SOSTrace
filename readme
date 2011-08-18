@@ -1,4 +1,6 @@
-Usage is extremely simple.
+This is a HaXe trace target, usable with both JS and Flash targets.
+
+Usage is extremely simple:
 
 new SOSTrace();
 
@@ -13,3 +15,5 @@ trace("There's been a fatal error!", SOSTrace.FATAL);
 Additionally, string replacement is also optional using AS3 style tokens:
 
 trace("Object at point : ({0}, {1}).", SOSTrace.DEBUG, point.x, point.y);
+
+This last function may be removed shortly, as it seems unnecessary and clumbsy.
