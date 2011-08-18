@@ -60,14 +60,15 @@ class SOSTrace {
 	}
 	
 	private function connect():Void {
-		_socket = new SOSSocket("flashsocket");
-		_socket.connect(_server, _port);
-		
 		#if js
+			_socket = new SOSSocket("flashsocket");
 			_socket.onConnect = onConnect;
 		#else
+			_socket = new SOSSocket();
 			_connected = true;
 		#end
+		
+		_socket.connect(_server, _port);
 	}
 	
 	private function onConnect(b:Bool):Void {
